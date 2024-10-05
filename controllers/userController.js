@@ -3,19 +3,19 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 
-const userFilePath = path.join(__dirname, '../data/data.json');
-const SECRET_KEY = 'your_secret_key'; // Change this to a secure key in production
+const userFilePath = path.join(__dirname, '../data/users.json');
+const SECRET_KEY = 'your_secret_key';
 
-const readUsers = () => {
-    const data = fs.readFileSync(userFilePath);
+
+const readUsersFromFile = () => {
+    const data = fs.readFileSync(userFilePath, 'utf8');
     return JSON.parse(data);
 };
 
-const writeUsers = (users) => {
+const writeUsersToFile = (users) => {
     fs.writeFileSync(userFilePath, JSON.stringify(users, null, 2));
 };
 
-// Validation schemas
 const registerSchema = Joi.object({
     first_name: Joi.string().required(),
     last_name: Joi.string().required(),
@@ -29,40 +29,45 @@ const loginSchema = Joi.object({
     password: Joi.string().min(6).required(),
 });
 
-// Register
 exports.register = (req, res) => {
     const { error } = registerSchema.validate(req.body);
-    if (error) return res.status(400).send(error.details[0].message);
+    if (error) {
+        return res.status(400).send(error.details[0].message);
+    }
 
-    const users = readUsers();
+    const users = readUsersFromFile();
     const newUser = {
         id: users.length + 1,
         ...req.body,
     };
 
     users.push(newUser);
-    writeUsers(users);
+    writeUsersToFile(users);
     res.status(201).send('User registered successfully');
 };
 
-// Login
 exports.login = (req, res) => {
     const { error } = loginSchema.validate(req.body);
-    if (error) return res.status(400).send(error.details[0].message);
+    if (error) {
+        return res.status(400).send(error.details[0].message);
+    }
 
-    const users = readUsers();
-    const user = users.find(u => u.email === req.body.email && u.password === req.body.password);
+    const users = readUsersFromFile();
+    const foundUser = users.find(user => user.email === req.body.email && user.password === req.body.password);
 
-    if (!user) return res.status(401).send('Invalid email or password');
+    if (!foundUser) {
+        return res.status(401).send('Invalid email or password');
+    }
 
-    const token = jwt.sign({ id: user.id }, SECRET_KEY);
+    const token = jwt.sign({ id: foundUser.id }, SECRET_KEY);
     res.send({ token });
 };
 
-// Get Profile
 exports.getProfile = (req, res) => {
-    const users = readUsers();
-    const user = users.find(u => u.id === req.user.id);
-    if (!user) return res.status(404).send('User not found');
-    res.send(user);
+    const users = readUsersFromFile();
+    const userProfile = users.find(user => user.id === req.user.id);
+    if (!userProfile) {
+        return res.status(404).send('User not found');
+    }
+    res.send(userProfile);
 };
