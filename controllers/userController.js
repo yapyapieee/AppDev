@@ -23,13 +23,23 @@ exports.register = (req, res) => {
         return res.status(400).send(error.details[0].message);
     }
 
-    const existingUser = userModel.findUserByEmail(req.body.email);
-    if (existingUser) {
-        return res.status(400).send('User already exists.');
-    }
+    const users = readUsersFromFile();
+    const newUser = {
+        id: users.length + 1,
+        first_name: req.body.first_name,
+        last_name: req.body.last_name,
+        email: req.body.email,
+        password: req.body.password,
+        confirm_password: req.body.confirm_password,
+    };
 
-    const newUser = userModel.createUser(req.body);
-    res.status(201).send({ id: newUser.id, email: newUser.email });
+    users.push(newUser);
+    writeUsersToFile(users);
+    
+    res.status(201).send({
+        id: newUser.id,
+        email: newUser.email,
+    });
 };
 
 exports.login = (req, res) => {
@@ -44,7 +54,10 @@ exports.login = (req, res) => {
     }
 
     const token = jwt.sign({ id: foundUser.id }, SECRET_KEY);
-    res.send({ token });
+    res.send({
+        token,
+        email: foundUser.email,
+    });
 };
 
 exports.getProfile = (req, res) => {
