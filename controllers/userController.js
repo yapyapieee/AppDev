@@ -4,6 +4,7 @@ const userModel = require('../models/userModel');
 
 const SECRET_KEY = 'your_secret_key';
 
+// Define the schema for user registration validation
 const registerSchema = Joi.object({
     first_name: Joi.string().required(),
     last_name: Joi.string().required(),
@@ -12,11 +13,13 @@ const registerSchema = Joi.object({
     confirm_password: Joi.ref('password'),
 });
 
+// Define the schema for user login validation
 const loginSchema = Joi.object({
     email: Joi.string().email().required(),
     password: Joi.string().min(6).required(),
 });
 
+// Handle user registration
 exports.register = (req, res) => {
     const { error } = registerSchema.validate(req.body);
     if (error) {
@@ -42,6 +45,7 @@ exports.register = (req, res) => {
     });
 };
 
+// Handle user login
 exports.login = (req, res) => {
     const { error } = loginSchema.validate(req.body);
     if (error) {
@@ -60,6 +64,7 @@ exports.login = (req, res) => {
     });
 };
 
+// Handle fetching user profile
 exports.getProfile = (req, res) => {
     const userProfile = userModel.findUserById(req.user.id);
     if (!userProfile) {
