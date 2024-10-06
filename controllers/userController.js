@@ -1,20 +1,8 @@
-const fs = require('fs');
-const path = require('path');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
+const userModel = require('../models/userModel');
 
-const userFilePath = path.join(__dirname, '../data/users.json');
 const SECRET_KEY = 'your_secret_key';
-
-
-const readUsersFromFile = () => {
-    const data = fs.readFileSync(userFilePath, 'utf8');
-    return JSON.parse(data);
-};
-
-const writeUsersToFile = (users) => {
-    fs.writeFileSync(userFilePath, JSON.stringify(users, null, 2));
-};
 
 const registerSchema = Joi.object({
     first_name: Joi.string().required(),
@@ -35,15 +23,13 @@ exports.register = (req, res) => {
         return res.status(400).send(error.details[0].message);
     }
 
-    const users = readUsersFromFile();
-    const newUser = {
-        id: users.length + 1,
-        ...req.body,
-    };
+    const existingUser = userModel.findUserByEmail(req.body.email);
+    if (existingUser) {
+        return res.status(400).send('User already exists.');
+    }
 
-    users.push(newUser);
-    writeUsersToFile(users);
-    res.status(201).send('User registered successfully');
+    const newUser = userModel.createUser(req.body);
+    res.status(201).send({ id: newUser.id, email: newUser.email });
 };
 
 exports.login = (req, res) => {
@@ -52,10 +38,8 @@ exports.login = (req, res) => {
         return res.status(400).send(error.details[0].message);
     }
 
-    const users = readUsersFromFile();
-    const foundUser = users.find(user => user.email === req.body.email && user.password === req.body.password);
-
-    if (!foundUser) {
+    const foundUser = userModel.findUserByEmail(req.body.email);
+    if (!foundUser || foundUser.password !== req.body.password) {
         return res.status(401).send('Invalid email or password');
     }
 
@@ -64,8 +48,7 @@ exports.login = (req, res) => {
 };
 
 exports.getProfile = (req, res) => {
-    const users = readUsersFromFile();
-    const userProfile = users.find(user => user.id === req.user.id);
+    const userProfile = userModel.findUserById(req.user.id);
     if (!userProfile) {
         return res.status(404).send('User not found');
     }
